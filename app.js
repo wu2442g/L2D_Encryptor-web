@@ -42,21 +42,36 @@
     const out = [];
     for (let i = 0; i < fileList.length; i++) {
       const f = fileList[i];
-      const path = (f.webkitRelativePath || f.name).replace(/\\/g, "/");
-      out.push({ file: f, path: path });
+      const path = (f.webkitRelativePath || f.name || "").replace(/\\/g, "/");
+      if (path) out.push({ file: f, path: path });
     }
     return out;
   }
 
+  /** 去掉第一層資料夾名；若只有一層則整段當相對路徑 */
   function relInsideModel(fullPath) {
     const parts = fullPath.replace(/\\/g, "/").split("/").filter(Boolean);
-    if (parts.length <= 1) return parts[0] || "";
+    if (parts.length === 0) return "";
+    if (parts.length === 1) return parts[0];
     return parts.slice(1).join("/");
   }
 
   function topFolderName(fullPath) {
     const parts = fullPath.replace(/\\/g, "/").split("/").filter(Boolean);
     return parts[0] || "encrypted_model";
+  }
+
+  function isModel3Json(name) {
+    const n = name.replace(/\\/g, "/").toLowerCase();
+    // 已是加密檔略過
+    if (n.endsWith(".model3.json.enc")) return false;
+    return n.endsWith(".model3.json");
+  }
+
+  function isMoc3(name) {
+    const n = name.replace(/\\/g, "/").toLowerCase();
+    if (n.endsWith(".moc3.enc")) return false;
+    return n.endsWith(".moc3");
   }
 
   btnPick.addEventListener("click", function (e) {
@@ -171,19 +186,25 @@
       const folderName = topFolderName(entries[0].path);
       let hasJson = false;
       let hasMoc = false;
+      const sampleNames = [];
 
       for (let i = 0; i < entries.length; i++) {
         const file = entries[i].file;
         const path = entries[i].path;
-        const rel = relInsideModel(path);
+        // 同時用完整路徑與去掉頂層後的路徑判斷
+        const rel = relInsideModel(path) || path.split("/").pop() || path;
         if (!rel) continue;
-        const lower = rel.toLowerCase();
+
+        const baseName = rel.split("/").pop() || rel;
+        if (sampleNames.length < 15) sampleNames.push(baseName);
+
         const buf = new Uint8Array(await file.arrayBuffer());
 
-        if (lower.endsWith(".model3.json") && !lower.endsWith(".model3.json.enc")) {
+        // 用「完整 path」與「rel」任一符合即可
+        if (isModel3Json(path) || isModel3Json(rel) || isModel3Json(baseName)) {
           hasJson = true;
           zip.file(rel + ".enc", await L2DCrypto.encryptAssetBytes(buf, pw));
-        } else if (lower.endsWith(".moc3") && !lower.endsWith(".moc3.enc")) {
+        } else if (isMoc3(path) || isMoc3(rel) || isMoc3(baseName)) {
           hasMoc = true;
           zip.file(rel + ".enc", await L2DCrypto.encryptAssetBytes(buf, pw));
         } else {
@@ -195,11 +216,26 @@
         }
       }
 
-      if (!hasJson) throw new Error("找不到 *.model3.json");
-      if (!hasMoc) throw new Error("找不到 *.moc3");
+      if (!hasJson || !hasMoc) {
+        const hintList = sampleNames.length
+          ? "目前掃到的檔名例如：\n" + sampleNames.join("\n")
+          : "（沒有掃到任何檔名）";
+        const missing = [];
+        if (!hasJson) missing.push("*.model3.json");
+        if (!hasMoc) missing.push("*.moc3");
+        throw new Error(
+          "找不到 " +
+            missing.join(" 與 ") +
+            "。\n請確認選的是「明文模型資料夾」（不要選已加密的）。\n\n" +
+            hintList
+        );
+      }
 
       status.textContent = "打包 ZIP…";
-      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+      const blob = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+      });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = folderName + "_encrypted.zip";
@@ -210,6 +246,7 @@
     } catch (e) {
       status.textContent = e.message || String(e);
       status.className = "status err";
+      console.error(e);
     } finally {
       btn.disabled = false;
     }
