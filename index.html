@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Live2D 模型加密工具 · 染界工坊</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg:#0f1115; --surface:#1a1d24; --border:#2e333d;
+      --text:#e8eaed; --muted:#9aa0a6; --accent:#7c6cff;
+      --ok:#3dd68c; --err:#f31260; --input:#12151a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+      padding:24px;background:var(--bg);color:var(--text);
+      font-family:"Microsoft JhengHei UI","Segoe UI",sans-serif;
+    }
+    .card{
+      width:100%;max-width:560px;background:var(--surface);
+      border:1px solid var(--border);border-radius:14px;padding:28px 24px;
+    }
+    h1{margin:0 0 6px;font-size:1.25rem}
+    .sub{color:var(--muted);font-size:.85rem;margin-bottom:20px;line-height:1.5}
+    label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+    .field{margin-bottom:16px}
+    input[type=password]{
+      width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);
+      background:var(--input);color:var(--text);font-size:.95rem;
+    }
+    input:focus{outline:none;border-color:var(--accent)}
+    .drop{
+      border:1.5px dashed var(--border);border-radius:10px;padding:24px 16px;
+      text-align:center;color:var(--muted);cursor:pointer;user-select:none;
+    }
+    .drop:hover,.drop.drag{border-color:var(--accent);background:#1f2230}
+    .drop strong{color:var(--text);display:block;margin-bottom:6px}
+    .hint{margin-top:10px;font-size:.8rem;color:var(--accent);word-break:break-all}
+    .list{max-height:120px;overflow:auto;text-align:left;margin-top:8px;font-size:.72rem;color:var(--muted)}
+    .btns{display:flex;gap:8px;margin-top:10px}
+    .btns button{
+      flex:1;background:transparent;border:1px solid var(--border);color:var(--text);
+      font-weight:600;padding:10px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.85rem;
+    }
+    .btns button:hover{border-color:var(--accent);color:var(--accent)}
+    #btn{
+      width:100%;margin-top:8px;padding:12px;border:none;border-radius:10px;
+      background:var(--accent);color:#fff;font-size:.95rem;font-weight:700;
+      cursor:pointer;font-family:inherit;
+    }
+    #btn:disabled{opacity:.5;cursor:not-allowed}
+    .status{margin-top:14px;font-size:.85rem;color:var(--muted);min-height:1.4em}
+    .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+    .note{margin-top:18px;padding:12px;border-radius:8px;background:var(--input);font-size:.75rem;color:var(--muted);line-height:1.55}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Live2D 模型加密工具</h1>
+    <p class="sub">純前端 · GitHub Pages<br/>檔案不離開瀏覽器（Web Crypto · L2DE v1）</p>
+
+    <div class="field">
+      <label>模型資料夾</label>
+      <div class="drop" id="drop">
+        <strong>點擊選擇資料夾</strong>
+        或拖曳整個資料夾到此<br/>
+        <span style="font-size:.8rem">需含 *.model3.json 與 *.moc3</span>
+        <div class="hint" id="fileHint"></div>
+        <div class="list" id="fileList"></div>
+      </div>
+      <div class="btns">
+        <button type="button" id="btnPick">選擇資料夾…</button>
+        <button type="button" id="btnClear">清除</button>
+      </div>
+      <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none"/>
+    </div>
+
+    <div class="field">
+      <label>保護密碼</label>
+      <input type="password" id="pw" autocomplete="new-password"/>
+    </div>
+    <div class="field">
+      <label>確認密碼</label>
+      <input type="password" id="pw2" autocomplete="new-password"/>
+    </div>
+
+    <button type="button" id="btn">加密並下載 ZIP</button>
+    <div class="status" id="status">請選擇整個模型資料夾並設定密碼</div>
+    <div class="note">
+      • 解壓後即為模型根目錄（ZIP 內不多包一層）。<br/>
+      • 請使用夠長、不可猜測的密碼。<br/>
+      • 啟動器需搭配 L2DE v1 版 crypto_common。
+    </div>
+  </div>
+  <script src="crypto.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
